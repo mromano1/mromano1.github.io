@@ -15,3 +15,7 @@ This folder is ready to upload to a GitHub Pages repository.
 4. In **Settings → Pages**, choose the main branch and `/docs`.
 
 The site uses static HTML, CSS, JavaScript, and PNG slide images. No build step is required.
+
+
+## Editing
+See `EDITING.md` for instructions on changing page text and adding downloadable resources directly in GitHub.
