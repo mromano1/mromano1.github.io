@@ -5,8 +5,34 @@
 const DRIVE_FOLDER_ID = '1B8YstCdeBnwC5raaTvYwbDALb2B-6m_w';
 const INDEX_FILE = 'project-management-form-index.json';
 
-function doPost(e){try{const req=JSON.parse(e.postData.contents||'{}');if(req.action==='save')return json_({ok:true,...saveRecord_(req.formType,req.mode,req.data||{})});if(req.action==='loadByEmail')return json_({ok:true,data:loadByEmail_(req.formType,req.email)});throw new Error('Unsupported action');}catch(err){return json_({ok:false,error:String(err.message||err)});}}
-function doGet(e){try{if(e.parameter.action!=='load')throw new Error('Unsupported action');return json_({ok:true,data:loadByEmail_(e.parameter.formType,e.parameter.email)});}catch(err){return json_({ok:false,error:String(err.message||err)});}}
+function doPost(e){
+  try{
+    const req=JSON.parse((e&&e.postData&&e.postData.contents)||'{}');
+    const action=String(req.action||'').trim();
+    if(action==='save'||action==='saveDraft'||action==='submitAssignment'||action==='submitFinal'){
+      let mode=req.mode||'draft';
+      const data=req.data||{};
+      if(action==='submitFinal') mode='final';
+      if(action==='submitAssignment'&&req.assignmentKey&&!data.assignmentKey) data.assignmentKey=req.assignmentKey;
+      return json_({ok:true,...saveRecord_(req.formType,mode,data)});
+    }
+    if(action==='loadByEmail'||action==='load'||action==='loadSaved'||action==='loadRecord'){
+      const email=req.email||(req.data&&req.data.email)||'';
+      return json_({ok:true,data:loadByEmail_(req.formType,email)});
+    }
+    throw new Error('Unsupported action: '+(action||'(blank)'));
+  }catch(err){return json_({ok:false,error:String(err.message||err)});}
+}
+function doGet(e){
+  try{
+    const p=(e&&e.parameter)||{};
+    const action=String(p.action||'load').trim();
+    if(action==='load'||action==='loadByEmail'||action==='loadSaved'||action==='loadRecord'){
+      return json_({ok:true,data:loadByEmail_(p.formType,p.email)});
+    }
+    throw new Error('Unsupported action: '+(action||'(blank)'));
+  }catch(err){return json_({ok:false,error:String(err.message||err)});}
+}
 function root_(){return DriveApp.getFolderById(DRIVE_FOLDER_ID);}
 function getOrCreateFolder_(parent,name){const it=parent.getFoldersByName(name);return it.hasNext()?it.next():parent.createFolder(name);}
 function submissions_(){return getOrCreateFolder_(root_(),'Submissions');}
