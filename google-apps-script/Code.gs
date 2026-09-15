@@ -5,8 +5,8 @@
 const DRIVE_FOLDER_ID = '1B8YstCdeBnwC5raaTvYwbDALb2B-6m_w';
 const INDEX_FILE = 'project-management-form-index.json';
 
-function doPost(e){try{const req=JSON.parse(e.postData.contents);if(req.action!=='save')throw new Error('Unsupported action');return json_({ok:true,...saveRecord_(req.formType,req.mode,req.data||{})});}catch(err){return json_({ok:false,error:String(err.message||err)});}}
-function doGet(e){try{if(e.parameter.action!=='load')throw new Error('Unsupported action');return json_({ok:true,data:loadRecord_(e.parameter.formType,e.parameter.recordId,e.parameter.email)});}catch(err){return json_({ok:false,error:String(err.message||err)});}}
+function doPost(e){try{const req=JSON.parse(e.postData.contents||'{}');if(req.action==='save')return json_({ok:true,...saveRecord_(req.formType,req.mode,req.data||{})});if(req.action==='loadByEmail')return json_({ok:true,data:loadByEmail_(req.formType,req.email)});throw new Error('Unsupported action');}catch(err){return json_({ok:false,error:String(err.message||err)});}}
+function doGet(e){try{if(e.parameter.action!=='load')throw new Error('Unsupported action');return json_({ok:true,data:loadByEmail_(e.parameter.formType,e.parameter.email)});}catch(err){return json_({ok:false,error:String(err.message||err)});}}
 function root_(){return DriveApp.getFolderById(DRIVE_FOLDER_ID);}
 function getOrCreateFolder_(parent,name){const it=parent.getFoldersByName(name);return it.hasNext()?it.next():parent.createFolder(name);}
 function submissions_(){return getOrCreateFolder_(root_(),'Submissions');}
@@ -48,10 +48,23 @@ function saveRecord_(formType,mode,data){
   idx[id]=entry; idx[emailKey_(formType,email)]=id; writeIndex_(idx);
   return {recordId:id,jsonFileId:entry.jsonFileId,readableFileId:entry.readableFileId,updatedAt:now};
 }
-function loadRecord_(formType,id,email){
-  const idx=index_(); id=id||findIdByEmail_(idx,formType,email); if(!id)throw new Error('No saved '+(formType==='project-plan'?'project plan':'project schedule')+' was found for that email address.');
-  const entry=idx[id];if(!entry)throw new Error('Record not found');const fileId=typeof entry==='string'?entry:entry.jsonFileId;
-  const rec=JSON.parse(DriveApp.getFileById(fileId).getBlob().getDataAsString());if(rec.formType!==formType)throw new Error('Form type mismatch');return rec.data;
+function loadByEmail_(formType,email){
+  const normalized=normEmail_(email);
+  if(!normalized) throw new Error('Email is required.');
+  const idx=index_();
+  const id=findIdByEmail_(idx,formType,normalized);
+  if(!id) throw new Error('No saved '+(formType==='project-plan'?'project plan':'project schedule')+' was found for that email address.');
+  return loadRecordById_(formType,id,idx);
+}
+function loadRecordById_(formType,id,idx){
+  idx=idx||index_();
+  const entry=idx[id];
+  if(!entry) throw new Error('Record not found.');
+  const fileId=typeof entry==='string'?entry:entry.jsonFileId;
+  if(!fileId) throw new Error('Saved record is missing its JSON file reference.');
+  const rec=JSON.parse(DriveApp.getFileById(fileId).getBlob().getDataAsString());
+  if(rec.formType!==formType) throw new Error('Form type mismatch.');
+  return rec.data||{};
 }
 
 function upsertPlanDoc_(fileId,d,mode,now){
