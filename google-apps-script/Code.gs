@@ -1,6 +1,6 @@
 /** Project Management student forms backend.
  * Set DRIVE_FOLDER_ID to the ID ONLY of your top-level Drive folder, then deploy as a Web App.
- * The script creates Submissions/Application Data and one readable folder per project/team.
+ * The script creates Submissions for readable Google Docs/Sheets and Submissions/Application Data for JSON records.
  */
 const DRIVE_FOLDER_ID = '1B8YstCdeBnwC5raaTvYwbDALb2B-6m_w';
 const INDEX_FILE = 'project-management-form-index.json';
@@ -14,7 +14,6 @@ function dataFolder_(){return getOrCreateFolder_(submissions_(),'Application Dat
 function index_(){const f=dataFolder_(),it=f.getFilesByName(INDEX_FILE);if(!it.hasNext())return {};return JSON.parse(it.next().getBlob().getDataAsString()||'{}');}
 function writeIndex_(idx){const f=dataFolder_(),it=f.getFilesByName(INDEX_FILE),s=JSON.stringify(idx,null,2);if(it.hasNext())it.next().setContent(s);else f.createFile(INDEX_FILE,s,MimeType.PLAIN_TEXT);}
 function clean_(s){return String(s||'Untitled').replace(/[\\/:*?"<>|#%{}~]/g,'-').replace(/\s+/g,' ').trim().substring(0,100)||'Untitled';}
-function teamFolder_(data){return getOrCreateFolder_(submissions_(),clean_(data.projectTitle)+' - '+clean_(data.studentTeam));}
 
 function saveRecord_(formType,mode,data){
   const df=dataFolder_(),idx=index_(); let id=data.recordId||Utilities.getUuid(); const now=new Date().toISOString();
@@ -30,7 +29,7 @@ function saveRecord_(formType,mode,data){
 function loadRecord_(formType,id){if(!id)throw new Error('Missing record ID');const idx=index_(),entry=idx[id];if(!entry)throw new Error('Record not found');const fileId=typeof entry==='string'?entry:entry.jsonFileId;const rec=JSON.parse(DriveApp.getFileById(fileId).getBlob().getDataAsString());if(rec.formType!==formType)throw new Error('Form type mismatch');return rec.data;}
 
 function upsertPlanDoc_(fileId,d,mode,now){
-  const folder=teamFolder_(d),name=clean_(d.projectTitle)+' - '+clean_(d.studentTeam)+' - Project Plan'; let doc;
+  const folder=submissions_(),name=clean_(d.projectTitle)+' - '+clean_(d.studentTeam)+' - Project Plan'; let doc;
   try{doc=fileId?DocumentApp.openById(fileId):null;}catch(e){doc=null;}
   if(!doc){doc=DocumentApp.create(name);moveToFolder_(DriveApp.getFileById(doc.getId()),folder);} else doc.setName(name);
   const b=doc.getBody();b.clear(); b.appendParagraph('PROJECT PLAN AND SCOPE').setHeading(DocumentApp.ParagraphHeading.TITLE);
@@ -45,7 +44,7 @@ function upsertPlanDoc_(fileId,d,mode,now){
   b.appendParagraph('17. Approval').setHeading(DocumentApp.ParagraphHeading.HEADING1); addInfoTable_(b,[['Student / Team Approval',d.studentApproval],['Approval Date',d.approvalDate]]); doc.saveAndClose(); return doc.getId();
 }
 function upsertScheduleSheet_(fileId,d,mode,now){
-  const folder=teamFolder_(d),name=clean_(d.projectTitle)+' - '+clean_(d.studentTeam)+' - Project Schedule'; let ss;
+  const folder=submissions_(),name=clean_(d.projectTitle)+' - '+clean_(d.studentTeam)+' - Project Schedule'; let ss;
   try{ss=fileId?SpreadsheetApp.openById(fileId):null;}catch(e){ss=null;}
   if(!ss){ss=SpreadsheetApp.create(name);moveToFolder_(DriveApp.getFileById(ss.getId()),folder);} else ss.rename(name);
   const sh=ss.getSheets()[0];sh.clear();sh.setName('Project Schedule');
