@@ -1,16 +1,21 @@
-# Connect the forms to Google Drive
+# Google Drive setup
 
-1. In Google Drive, create a folder for student submissions. Copy the folder ID from its URL.
-2. Go to script.google.com and create a new Apps Script project.
-3. Replace the default code with `google-apps-script/Code.gs`.
-4. Replace `PASTE_GOOGLE_DRIVE_FOLDER_ID_HERE` with your folder ID.
-5. Deploy > New deployment > Web app. Execute as **Me**. Choose the access setting appropriate for your students/account policy. Authorize the script and deploy it.
-6. Copy the Web App URL ending in `/exec`.
-7. In BOTH `project-plan-form.html` and `project-schedule-form.html`, replace `PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE` with that URL.
-8. Commit/push the files to GitHub.
+The backend now creates this structure automatically inside the Drive folder whose ID is in `Code.gs`:
 
-## How saving works
-Each student/team receives a browser-stored record ID after the first save. Save Draft updates the same Drive JSON record. Submit Final marks that saved record as final. Load Saved Work retrieves it. The Drive folder also contains an index file used by the script.
+- `Submissions/`
+  - `Application Data/` — JSON records plus the JSON index used for Save/Load.
+  - `<Project Title> - <Student or Team>/`
+    - `<Project Title> - <Student or Team> - Project Plan` (Google Doc)
+    - `<Project Title> - <Student or Team> - Project Schedule` (Google Sheet)
 
-## Important
-GitHub Pages cannot keep a Google secret safely. The Apps Script Web App is the server-side bridge. Do not put private API keys in the HTML. Test with a non-sensitive sample before student use, and use your organization's approved Google access/sharing policy.
+You do **not** need to create these folders yourself.
+
+## Update the Apps Script
+1. Open your existing Apps Script project.
+2. Replace its `Code.gs` with the new `google-apps-script/Code.gs` in this package.
+3. Confirm `DRIVE_FOLDER_ID` contains only the folder ID, not the full Drive URL.
+4. Save.
+5. Deploy > Manage deployments > Edit (pencil) > choose **New version** > Deploy.
+6. Keep the same `/exec` Web App URL in the HTML pages if you updated the existing deployment.
+
+The JSON remains visible in `Submissions/Application Data`; it is the editable data source that lets the website reload saved work. The readable Project Plan is updated as a Google Doc and the Project Schedule is updated as a Google Sheet rather than creating a new readable file on every save.
