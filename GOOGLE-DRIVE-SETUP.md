@@ -19,3 +19,11 @@ You do **not** need to create these folders yourself.
 6. Keep the same `/exec` Web App URL in the HTML pages if you updated the existing deployment.
 
 The JSON remains visible in `Submissions/Application Data`; it is the editable data source that lets the website reload saved work. The readable Project Plan is updated as a Google Doc and the Project Schedule is updated as a Google Sheet rather than creating a new readable file on every save.
+
+
+## Drive organization
+Readable Project Plans (Google Docs) and Project Schedules (Google Sheets) are saved directly in **Submissions**. JSON application records are saved separately in **Submissions/Application Data**. Both folders are created automatically if needed.
+
+
+## Email-based draft retrieval and staged assignments
+Students retrieve their Project Plan or Project Schedule with the same email address they entered when first saving. Email matching is case-insensitive. Each form type has one active record per email. The Project Plan includes assignment-level submission buttons; each submission timestamp is stored in the JSON and shown in the formatted Google Doc. Save Draft can be used at any time without marking an assignment submitted.
