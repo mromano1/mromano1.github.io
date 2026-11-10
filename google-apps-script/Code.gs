@@ -71,6 +71,8 @@ function saveRecord_(formType,mode,data){
   if(!jf){jf=df.createFile(formType+'_'+clean_(data.studentTeam)+'_'+id+'.json',JSON.stringify(rec,null,2),MimeType.PLAIN_TEXT);entry.jsonFileId=jf.getId();}
   if(formType==='project-plan') entry.readableFileId=upsertPlanDoc_(entry.readableFileId,merged,mode,now);
   if(formType==='project-schedule') entry.readableFileId=upsertScheduleSheet_(entry.readableFileId,merged,mode,now);
+  if(formType==='communications-plan') entry.readableFileId=upsertCommunicationsDoc_(entry.readableFileId,merged,mode,now);
+  if(formType==='risk-management') entry.readableFileId=upsertRiskDoc_(entry.readableFileId,merged,mode,now);
   idx[id]=entry; idx[emailKey_(formType,email)]=id; writeIndex_(idx);
   return {recordId:id,jsonFileId:entry.jsonFileId,readableFileId:entry.readableFileId,updatedAt:now};
 }
@@ -79,7 +81,7 @@ function loadByEmail_(formType,email){
   if(!normalized) throw new Error('Email is required.');
   const idx=index_();
   const id=findIdByEmail_(idx,formType,normalized);
-  if(!id) throw new Error('No saved '+(formType==='project-plan'?'project plan':'project schedule')+' was found for that email address.');
+  if(!id) throw new Error('No saved '+(formType||'form')+' was found for that email address.');
   return loadRecordById_(formType,id,idx);
 }
 function loadRecordById_(formType,id,idx){
@@ -134,3 +136,38 @@ function addAssignmentStatus_(b,status){
 }
 function formatDateTime_(iso){return Utilities.formatDate(new Date(iso),Session.getScriptTimeZone()||'America/New_York','MMM d, yyyy h:mm a');}
 function json_(o){return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);}
+
+
+function newPlanDoc_(fileId,d,mode,now,label){
+  const folder=submissions_(),name=clean_(d.projectTitle)+' - '+clean_(d.studentTeam)+' - '+label;
+  let doc;try{doc=fileId?DocumentApp.openById(fileId):null;}catch(e){doc=null;}
+  if(!doc){doc=DocumentApp.create(name);moveToFolder_(DriveApp.getFileById(doc.getId()),folder);}else doc.setName(name);
+  const b=doc.getBody();b.clear();b.appendParagraph(label.toUpperCase()).setHeading(DocumentApp.ParagraphHeading.TITLE);
+  b.appendParagraph((mode==='final'?'FINAL':'DRAFT')+' • Last updated '+formatDateTime_(now)).setHeading(DocumentApp.ParagraphHeading.SUBTITLE);
+  addInfoTable_(b,[['Project',d.projectTitle],['Project No.',d.projectNo],['Student / Team',d.studentTeam],['Email',d.email],['Date Submitted',d.dateSubmitted]]);
+  return {doc:doc,body:b};
+}
+function upsertCommunicationsDoc_(fileId,d,mode,now){
+  const x=newPlanDoc_(fileId,d,mode,now,'Communications Management Plan'),b=x.body;
+  addSection_(b,'1. Communication Objectives',d.communicationObjectives);
+  addSection_(b,'2. Communication Approach / Protocols',d.communicationApproach);
+  addArraySection_(b,'3. Stakeholder & Contact List',d.stakeholders,['Name','Role','Email','Phone','Information Needs']);
+  addArraySection_(b,'4. Communications Matrix',d.communications,['Communication / Report','Audience / Recipients','Purpose / Content','Method / Channel','Frequency','Responsible Person']);
+  addSection_(b,'5. Meeting Schedule and Agenda',d.meetingPlan);
+  addSection_(b,'6. Issue Escalation and Response',d.escalation);
+  addSection_(b,'7. Feedback / Follow-Up',d.feedback);
+  addSection_(b,'8. Comments',d.comments);
+  addInfoTable_(b,[['Prepared / Approved By',d.studentApproval],['Approval Date',d.approvalDate]]);
+  x.doc.saveAndClose();return x.doc.getId();
+}
+function upsertRiskDoc_(fileId,d,mode,now){
+  const x=newPlanDoc_(fileId,d,mode,now,'Risk Management Plan'),b=x.body;
+  addSection_(b,'1. Risk Identification and Monitoring Approach',d.riskApproach);
+  addSection_(b,'2. Likelihood / Impact Rating Criteria',d.riskScoring);
+  addArraySection_(b,'3. Risk Register',d.riskRegister,['Issue/Risk','Likelihood','Impact','Description of Issue','Risk Response Strategy']);
+  addArraySection_(b,'4. Mitigation & Contingency',d.mitigation,['Issue/Risk','Likelihood','Impact','Mitigation/Contingency']);
+  addArraySection_(b,'5. Monitoring and Ownership',d.monitoring,['Issue/Risk','Risk Owner','Review Date','Current Status','Notes']);
+  addSection_(b,'6. Comments',d.comments);
+  addInfoTable_(b,[['Prepared / Approved By',d.studentApproval],['Approval Date',d.approvalDate]]);
+  x.doc.saveAndClose();return x.doc.getId();
+}
